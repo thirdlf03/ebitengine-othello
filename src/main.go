@@ -12,6 +12,7 @@ import (
 	"image/color"
 	"log"
 	"os"
+	"time"
 )
 
 type EbitenGame struct {
@@ -21,6 +22,11 @@ type EbitenGame struct {
 }
 
 func (g *EbitenGame) Update() error {
+	if g.GameStatus.Score >= 1000 && !g.GameStatus.Help && g.GameStatus.Side == g.GameStatus.Player {
+		g.GameStatus.Help = true
+		fmt.Println("お助けくん")
+	}
+
 	if g.GameStatus.Black+g.GameStatus.White == 64 || (g.GameStatus.PlayerPass && g.GameStatus.AiPass) {
 		if !g.gameOver {
 			fmt.Println("ゲーム終了")
@@ -44,6 +50,7 @@ func (g *EbitenGame) Update() error {
 	}
 
 	if g.GameStatus.Side == g.GameStatus.Ai {
+		time.Sleep(500 * time.Millisecond)
 		usecase.PlaceAi(&g.GameStatus, g.GameStatus.Ai)
 		usecase.CountStones(&g.GameStatus)
 		if g.GameStatus.Player == config.CELL_WHITE {
@@ -249,6 +256,7 @@ func main() {
 
 	ebiten.SetWindowSize(config.WINDOW_WIDTH, config.WINDOW_HEIGHT+100)
 	ebiten.SetWindowTitle("Hello, World!")
+
 	game := &EbitenGame{
 		GameStatus: domain.GameStatus{
 			Board: [8][8]int{

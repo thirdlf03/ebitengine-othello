@@ -8,8 +8,14 @@ import (
 	othellov1 "ebitengine-othello/src/gen/othello/v1"
 	"ebitengine-othello/src/gen/othello/v1/othelloconnect"
 	"fmt"
+	"go.bug.st/serial"
+	"log"
 	"net/http"
+	"regexp"
+	"strconv"
 )
+
+var MaxA int
 
 func Place(g *domain.GameStatus, y int, x int) {
 
@@ -18,7 +24,53 @@ func Place(g *domain.GameStatus, y int, x int) {
 	}
 
 	if g.Board[y][x] == config.CELL_LEGAL {
-		// ひっくり返し処理
+
+		if g.Help {
+			port, err := serial.Open("/dev/cu.usbmodem143202", &serial.Mode{
+				BaudRate: 115200,
+			})
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer port.Close()
+
+			buff := make([]byte, 100)
+			MaxA = -config.INF
+			for i := 0; i < 30; i++ {
+				n, err := port.Read(buff)
+				if err != nil {
+					log.Println("Error reading serial data:", err)
+					break
+				}
+				if n == 0 {
+					fmt.Println("\nEOF")
+					break
+				}
+				data := string(buff[:n])
+				re := regexp.MustCompile(`a:(\d{3,4})`)
+
+				matches := re.FindAllStringSubmatch(data, -1)
+
+				for _, match := range matches {
+					if len(match) > 1 {
+						numStr := match[1]
+						fmt.Println(numStr)
+						num, err := strconv.Atoi(numStr)
+						if err != nil {
+							log.Println("Error converting string to int:", err)
+							continue
+						}
+
+						// maxA と数字部分を比較
+						if num > MaxA {
+							MaxA = num
+						}
+					}
+				}
+
+			}
+		}
+
 		g.PlayerPass = false
 		for i := 0; i < 8; i++ {
 			for j := 0; j < 8; j++ {
@@ -77,9 +129,16 @@ func Place(g *domain.GameStatus, y int, x int) {
 				}
 			}
 		}
-
 		fmt.Println(" ")
 		fmt.Println("Playerの手: ", y, x)
+		fmt.Println(MaxA)
+		if g.Help && 1500 < MaxA {
+			Kiai(g, y, x, 1)
+			fmt.Println("Kiai Dazo!!")
+			g.Side = g.Ai
+			CountStones(g)
+			return
+		}
 		g.Board[y][x] = currentSide
 		CountStones(g)
 		fmt.Println("黒: ", g.Black, "白: ", g.White)
@@ -87,6 +146,7 @@ func Place(g *domain.GameStatus, y int, x int) {
 		g.Side = enemySide
 
 		return
+
 	}
 	// クリックした位置に駒がある場合は何もしない
 	if g.Board[y][x] != config.CELL_EMPTY {
@@ -127,7 +187,8 @@ func PlaceAi(g *domain.GameStatus, player int) {
 		return
 	}
 
-	y, x := int(res.Msg.GetY()), int(res.Msg.GetX())
+	y, x, score := int(res.Msg.GetY()), int(res.Msg.GetX()), int(res.Msg.GetScore())
+	g.Score = score
 	g.AiPass = false
 	currentSide := g.Side
 	var enemySide int
@@ -181,7 +242,8 @@ func PlaceAi(g *domain.GameStatus, player int) {
 	g.Board[y][x] = currentSide
 	g.Side = g.Player
 	fmt.Println(" ")
-	fmt.Println("AIの手: ", y, x)
+	fmt.Printf("AIの手: %d, %d ", y, x)
+	fmt.Printf("評価値: %d\n", score)
 	CountStones(g)
 	fmt.Println("黒: ", g.Black, "白: ", g.White)
 	fmt.Println("")
@@ -285,6 +347,32 @@ func CheckLegal(b *domain.GameStatus, player int) bool {
 		}
 	}
 	return found
+}
+
+func Kiai(b *domain.GameStatus, y int, x int, num int) {
+	for i := y - num; i <= y+num; i++ {
+		for j := x - num; j <= x+num; j++ {
+			fmt.Println("y, x")
+			fmt.Println(i, j)
+			if !inside(i, j) {
+				continue
+			}
+			if b.Board[i][j] == config.CELL_LEGAL {
+				b.Board[i][j] = config.CELL_EMPTY
+				continue
+			}
+			if b.Board[i][j] == config.CELL_BLACK {
+				b.Board[i][j] = config.CELL_WHITE
+				continue
+			}
+			if b.Board[i][j] == config.CELL_WHITE {
+				b.Board[i][j] = config.CELL_BLACK
+				continue
+			}
+		}
+	}
+	b.Board[y][x] = b.Player
+	return
 }
 
 func CountStones(b *domain.GameStatus) {

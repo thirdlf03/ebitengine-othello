@@ -15,4 +15,6 @@ const (
 	CELL_BLACK = 1
 	CELL_WHITE = 2
 	CELL_LEGAL = 3
+
+	INF = 1000000000
 )
