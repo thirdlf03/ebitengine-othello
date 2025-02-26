@@ -132,12 +132,17 @@ func Place(g *domain.GameStatus, y int, x int) {
 		fmt.Println(" ")
 		fmt.Println("Playerの手: ", y, x)
 		fmt.Println(MaxA)
-		if g.Help && 1500 < MaxA {
-			Kiai(g, y, x, 1)
-			fmt.Println("Kiai Dazo!!")
-			g.Side = g.Ai
-			CountStones(g)
-			return
+		if g.Help {
+			if MaxA > 3500 {
+				fullPower(g, y, x)
+				return
+			} else if MaxA > 3000 {
+				Kiai(g, y, x, 3)
+				return
+			} else if MaxA > 2000 {
+				Kiai(g, y, x, 2)
+				return
+			}
 		}
 		g.Board[y][x] = currentSide
 		CountStones(g)
@@ -351,28 +356,52 @@ func CheckLegal(b *domain.GameStatus, player int) bool {
 
 func Kiai(b *domain.GameStatus, y int, x int, num int) {
 	for i := y - num; i <= y+num; i++ {
-		for j := x - num; j <= x+num; j++ {
-			fmt.Println("y, x")
-			fmt.Println(i, j)
+		for j := x; j <= x+num+1; j++ {
+
 			if !inside(i, j) {
 				continue
 			}
+
+			if i == y && j == x {
+				continue
+			}
+
 			if b.Board[i][j] == config.CELL_LEGAL {
 				b.Board[i][j] = config.CELL_EMPTY
-				continue
-			}
-			if b.Board[i][j] == config.CELL_BLACK {
+			} else if b.Board[i][j] == config.CELL_BLACK {
 				b.Board[i][j] = config.CELL_WHITE
-				continue
-			}
-			if b.Board[i][j] == config.CELL_WHITE {
+			} else if b.Board[i][j] == config.CELL_WHITE {
 				b.Board[i][j] = config.CELL_BLACK
-				continue
+			}
+		}
+	}
+
+	for k := 0; k < 8; k++ {
+		for l := 0; l < 8; l++ {
+			fmt.Printf("%d ", b.Board[k][l])
+		}
+	}
+	b.Board[y][x] = b.Player
+	b.Side = b.Ai
+	CountStones(b)
+}
+
+func fullPower(b *domain.GameStatus, y int, x int) {
+	for i := 0; i < 8; i++ {
+		for j := 0; j < 8; j++ {
+			if b.Board[i][j] == config.CELL_LEGAL {
+				b.Board[i][j] = config.CELL_EMPTY
+			} else if b.Board[i][j] == config.CELL_BLACK {
+				b.Board[i][j] = config.CELL_WHITE
+			} else if b.Board[i][j] == config.CELL_WHITE {
+				b.Board[i][j] = config.CELL_BLACK
 			}
 		}
 	}
 	b.Board[y][x] = b.Player
-	return
+	b.Help = false
+	b.Side = b.Ai
+	CountStones(b)
 }
 
 func CountStones(b *domain.GameStatus) {

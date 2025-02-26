@@ -22,10 +22,6 @@ type EbitenGame struct {
 }
 
 func (g *EbitenGame) Update() error {
-	if g.GameStatus.Score >= 1000 && !g.GameStatus.Help && g.GameStatus.Side == g.GameStatus.Player {
-		g.GameStatus.Help = true
-		fmt.Println("お助けくん")
-	}
 
 	if g.GameStatus.Black+g.GameStatus.White == 64 || (g.GameStatus.PlayerPass && g.GameStatus.AiPass) {
 		if !g.gameOver {
@@ -50,8 +46,8 @@ func (g *EbitenGame) Update() error {
 	}
 
 	if g.GameStatus.Side == g.GameStatus.Ai {
-		time.Sleep(500 * time.Millisecond)
 		usecase.PlaceAi(&g.GameStatus, g.GameStatus.Ai)
+		time.Sleep(700 * time.Millisecond)
 		usecase.CountStones(&g.GameStatus)
 		if g.GameStatus.Player == config.CELL_WHITE {
 			found := usecase.CheckLegal(&g.GameStatus, g.GameStatus.Player)
@@ -69,6 +65,11 @@ func (g *EbitenGame) Update() error {
 			fmt.Printf("人間の手: パス\n")
 			g.GameStatus.PlayerPass = true
 		}
+	}
+
+	if g.GameStatus.Score >= 1000 && !g.GameStatus.Help && g.GameStatus.Side == g.GameStatus.Player {
+		g.GameStatus.Help = true
+		fmt.Println("お助けくん")
 	}
 
 	// クリックした位置に駒がある場合は何もしない
