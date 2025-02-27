@@ -26,12 +26,13 @@ func Place(g *domain.GameStatus, y int, x int) {
 	if g.Board[y][x] == config.CELL_LEGAL {
 
 		if g.Help {
-			port, err := serial.Open("/dev/cu.usbmodem143202", &serial.Mode{
+			port, err := serial.Open(regexp.MustCompile(`/dev/cu\.usbmodem\d+`).FindString("/dev/cu.usbmodem141202"), &serial.Mode{
 				BaudRate: 115200,
 			})
 			if err != nil {
 				log.Fatal(err)
 			}
+
 			defer port.Close()
 
 			buff := make([]byte, 100)
@@ -133,8 +134,9 @@ func Place(g *domain.GameStatus, y int, x int) {
 		fmt.Println("Playerの手: ", y, x)
 		fmt.Println(MaxA)
 		if g.Help {
-			if MaxA > 3500 {
+			if MaxA > 3500 && !g.Final {
 				fullPower(g, y, x)
+				g.Final = true
 				return
 			} else if MaxA > 3000 {
 				Kiai(g, y, x, 3)

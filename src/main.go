@@ -1,14 +1,17 @@
 package main
 
 import (
+	"bytes"
 	"ebitengine-othello/src/config"
 	"ebitengine-othello/src/domain"
 	"ebitengine-othello/src/usecase"
 	"ebitengine-othello/src/utils"
 	"fmt"
+	"github.com/ebitengine/oto/v3"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
+	"github.com/hajimehoshi/go-mp3"
 	"image/color"
 	"log"
 	"os"
@@ -21,7 +24,10 @@ type EbitenGame struct {
 	gameOver   bool
 }
 
+var musicPlayer *oto.Player
+
 func (g *EbitenGame) Update() error {
+	musicPlayer.Play()
 
 	if g.GameStatus.Black+g.GameStatus.White == 64 || (g.GameStatus.PlayerPass && g.GameStatus.AiPass) {
 		if !g.gameOver {
@@ -137,7 +143,7 @@ func (g *EbitenGame) Draw(screen *ebiten.Image) {
 			} else if piece == config.CELL_WHITE {
 				pieceColor = color.White
 			} else {
-				pieceColor = color.RGBA{0xff, 0xc0, 0xcb, 0xff}
+				pieceColor = color.RGBA{0, 181, 204, 60}
 			}
 
 			vector.DrawFilledCircle(
@@ -243,6 +249,33 @@ func main() {
 
 	player := utils.ConvertPlayer(input)
 
+	if err != nil {
+		panic("reading my-file.mp3 failed: " + err.Error())
+	}
+
+	fileBytes, err := os.ReadFile("./bgm.mp3")
+	op := &oto.NewContextOptions{}
+
+	fileBytesReader := bytes.NewReader(fileBytes)
+	decodedMp3, err := mp3.NewDecoder(fileBytesReader)
+	if err != nil {
+		panic("mp3.NewDecoder failed: " + err.Error())
+	}
+
+	op.SampleRate = 44100
+	op.ChannelCount = 2
+	op.Format = oto.FormatSignedInt16LE
+	otoCtx, readyChan, err := oto.NewContext(op)
+	if err != nil {
+		panic("oto.NewContext failed: " + err.Error())
+	}
+
+	<-readyChan
+
+	musicPlayer = otoCtx.NewPlayer(decodedMp3)
+
+	musicPlayer.Play()
+
 	// 石の数を表示
 	f, err := os.Open("NotoSansJP-Medium.ttf")
 	if err != nil {
@@ -255,7 +288,7 @@ func main() {
 		return
 	}
 
-	ebiten.SetWindowSize(config.WINDOW_WIDTH, config.WINDOW_HEIGHT+100)
+	ebiten.SetWindowSize(config.WINDOW_WIDTH+200, config.WINDOW_HEIGHT+300)
 	ebiten.SetWindowTitle("Hello, World!")
 
 	game := &EbitenGame{
